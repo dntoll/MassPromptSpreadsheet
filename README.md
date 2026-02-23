@@ -4,6 +4,8 @@ Plugin/function for Google Spreadsheet that runs AI prompts against cell values 
 
 **Example:** Cell A1 contains `Hello my name is Henrik`. In B1: `=PROMPT(A1; "Extract only the name from: {0}")` → result is **Henrik**. With the `[firstname,lastname]` syntax in the prompt you get multiple outputs in separate cells, e.g. `=PROMPT(A1; "Extract [firstname,lastname] from {0}")` → **John** and **Doe** in two cells.
 
+![](image.png)
+
 ## Technical overview
 
 - **Platform**: Google Apps Script (container-bound script or add-on).
