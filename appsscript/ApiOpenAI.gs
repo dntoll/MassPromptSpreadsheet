@@ -39,6 +39,46 @@ function sendPromptStructured(template, inputs, apiKey) {
 }
 
 /**
+ * Som sendPromptStructured men kräver att modellen svarar med ett enda JSON-objekt med exakt de angivna nycklarna.
+ * Används för flera utdata som sprids över celler.
+ * @param {string} template - Prompt-mall med {0}, {1}, … och eventuellt [field1,field2,…].
+ * @param {Array} inputs - Array av indatavärden (normaliserade).
+ * @param {Array.<string>} outputKeys - Nycklar som JSON-svaret måste innehålla, i ordning.
+ * @param {string} apiKey - OpenAI API-nyckel.
+ * @returns {string} Rå svarssträng (JSON) eller "ERROR: …".
+ */
+function sendPromptStructuredMulti(template, inputs, outputKeys, apiKey) {
+  if (!apiKey || (typeof apiKey === 'string' && apiKey.trim() === '')) {
+    return 'ERROR: API-nyckel saknas.';
+  }
+  if (template == null) {
+    template = '';
+  }
+  if (!inputs || !Array.isArray(inputs)) {
+    inputs = [];
+  }
+  if (!outputKeys || !Array.isArray(outputKeys) || outputKeys.length === 0) {
+    return 'ERROR: outputKeys krävs för multi-utdata.';
+  }
+  var dataStrings = [];
+  for (var i = 0; i < inputs.length; i++) {
+    dataStrings.push(inputs[i] != null && inputs[i] !== undefined ? String(inputs[i]) : '');
+  }
+  var jsonKeysInstruction = 'Reply with only a valid JSON object with exactly these keys: ' + outputKeys.join(', ') + '. No other text, no markdown.';
+  var userContent = JSON.stringify({
+    task: String(template),
+    data: dataStrings,
+    outputFormat: jsonKeysInstruction
+  });
+  var systemContent = SYSTEM_INSTRUCTION_STRUCTURED + ' If the task includes an outputFormat instruction, you must follow it: respond with only that format (e.g. a single JSON object with the specified keys), nothing else.';
+  var messages = [
+    { role: 'system', content: systemContent },
+    { role: 'user', content: userContent }
+  ];
+  return fetchOpenAI(messages, apiKey);
+}
+
+/**
  * Skickar en fylld prompt till OpenAI Chat Completions och returnerar svaret.
  * Använd sendPromptStructured för bättre skydd mot prompt injection.
  * @param {string} filledPrompt - Den färdiga användarprompten (placeholders redan ersatta).

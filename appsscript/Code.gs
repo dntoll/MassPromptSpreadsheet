@@ -9,10 +9,12 @@ var SCRIPT_PROP_API_KEY = 'API_KEY';
 var SCRIPT_PROP_OPENAI_ORG = 'OPENAI_ORG';
 var ERROR_MIN_ARGS = 'ERROR: Minst ett indata och en prompt krävs';
 var ERROR_NO_API_KEY = 'ERROR: Sätt API-nyckel via menyn Mass Prompt → Sätt API-nyckel';
+var ERROR_STRUCTURED_RESPONSE = 'ERROR: Ogiltigt strukturerat svar';
 
 /**
  * Anpassad funktion för kalkylarket: =PROMPT(indata_1; indata_2; …; prompt_cell)
  * Sista argumentet = prompt-mall (med {0}, {1}, …), övriga = indata. Anropar OpenAI och returnerar svaret.
+ * Om prompten innehåller [field1,field2,…] returneras resultatet som flera celler (spill till höger).
  */
 function PROMPT() {
   var args = Array.prototype.slice.call(arguments);
@@ -30,6 +32,34 @@ function PROMPT() {
   for (var i = 0; i < rawInputs.length; i++) {
     normalizedInputs.push(normalizeCellValue(rawInputs[i]));
   }
+
+  var outputKeys = parseOutputSchema(template);
+  if (outputKeys && outputKeys.length > 0) {
+    var result = sendPromptStructuredMulti(template, normalizedInputs, outputKeys, apiKey);
+    if (result.indexOf('ERROR: ') === 0) {
+      return result;
+    }
+    try {
+      var raw = result.trim();
+      if (raw.indexOf('```') === 0) {
+        raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      }
+      var obj = JSON.parse(raw);
+      if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
+        return ERROR_STRUCTURED_RESPONSE;
+      }
+      var row = [];
+      for (var k = 0; k < outputKeys.length; k++) {
+        var key = outputKeys[k];
+        var val = obj[key];
+        row.push(val !== undefined && val !== null ? String(val) : '');
+      }
+      return [row];
+    } catch (e) {
+      return ERROR_STRUCTURED_RESPONSE;
+    }
+  }
+
   var result = sendPromptStructured(template, normalizedInputs, apiKey);
   if (result.indexOf('ERROR: ') === 0) {
     return result;

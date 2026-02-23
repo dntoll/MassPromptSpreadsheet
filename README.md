@@ -52,7 +52,7 @@ Om implementationen har det: använd **Radera API-nyckel** i menyn för att ta b
 - **indata_1, indata_2, …**: Celler eller värden som ska användas i prompten. Minst ett indata krävs. Flera indata mappas till placeholders `{0}`, `{1}`, `{2}` osv. i ordning.
 - **prompt_cell**: Cell som innehåller prompt-mallen. Sista argumentet är alltid prompt-mallen.
 
-Argument avgränsas med semikolon (;) i svensk och många europeiska locale, med komma (,) i t.ex. engelska (US). Funktionen returnerar ett enda textvärde per anrop (en cell).
+Argument avgränsas med semikolon (;) i svensk och många europeiska locale, med komma (,) i t.ex. engelska (US). Funktionen returnerar antingen ett enda textvärde (en cell) eller flera värden som sprids horisontellt (se **Flera utdata**).
 
 ## Placeholders
 
@@ -62,7 +62,14 @@ Placeholders använder **curly brackets** `{}` (vanlig standard i prompt-mallar)
 - **`{1}`** — ersätts med andra indata-argumentet (om det finns).
 - **`{2}`** — tredje, osv.
 
-**Reserverat:** Hakparenteser `[]` är reserverade för framtida array/range-semantik (t.ex. när ett helt område skickas som indata).
+## Flera utdata (utdata-schema)
+
+Om prompt-mallen innehåller **hakparenteser med kommaseparerade fältnamn**, t.ex. `[firstname,lastname]`, tolkas det som att modellen ska svara med ett strukturerat svar (ett JSON-objekt med dessa nycklar). Resultatet sprids då över flera celler (en rad horisontellt), en cell per fält.
+
+- **Syntax:** `[fält1,fält2,...]` – första förekomsten av `[ ... ]` i prompten parsas; fältnamnen trimmas.
+- **Exempel:** `Extract [firstname,lastname] from {0}` → modellen ombes att returnera JSON med nycklarna `firstname` och `lastname`; första cellen får förnamn, nästa cell efternamn.
+- Utan utdata-schema i prompten gäller som tidigare ett enda textvärde per anrop.
+- Vid ogiltigt eller icke-JSON-svar från modellen visas `ERROR: Ogiltigt strukturerat svar` i formelcellen.
 
 ## Användning
 
@@ -78,6 +85,12 @@ Placeholders använder **curly brackets** `{}` (vanlig standard i prompt-mallar)
 - **B3** innehåller: `Stockholm`
 - **C1** innehåller: `The person {0} lives in {1}.`
 - **C3** innehåller: `=PROMPT(A3;B3;C1)` → resultat: `The person Henrik lives in Stockholm.`
+
+**Exempel med flera utdata (spill till höger):**
+
+- **A3** innehåller: `John Doe`
+- **B1** innehåller: `Extract [firstname,lastname] from {0}`
+- **B3** innehåller: `=PROMPT(A3;B1)` → första cellen (B3) får t.ex. `John`, nästa cell (C3) får t.ex. `Doe`. Resultatet sprids horisontellt.
 
 Se **Inmatning av API-nyckel** om du ännu inte satt nyckel.
 
