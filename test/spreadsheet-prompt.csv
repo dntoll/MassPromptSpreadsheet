@@ -1,0 +1,13 @@
+Beskrivning,Indata1,Indata2,Indata3,Prompt,Formel
+"För få argument (0 indata) – förväntat fel","","","","Vad som helst","=PROMPT(E2)"
+"En indata – enkel utdata","Hello my name is Henrik","","","If {0} contains a name output only the name","=PROMPT(B3;E3)"
+"Två indata – enkel utdata","Henrik","Stockholm","","The person {0} lives in {1}.","=PROMPT(B4;C4;E4)"
+"Tre indata – enkel utdata","Anna","30","Lund","{0} is {1} years old and lives in {2}.","=PROMPT(B5;C5;D5;E5)"
+"En indata – flera utdata [firstname,lastname]","John Doe","","","Extract [firstname,lastname] from {0}","=PROMPT(B6;E6)"
+"En indata – flera utdata [country,city]","Sverige Stockholm","","","Extract [country,city] from: {0}","=PROMPT(B7;E7)"
+"Två indata – flera utdata","Henrik","Andersson","","Full name as [firstname,lastname] from first: {0} second: {1}","=PROMPT(B8;C8;E8)"
+"En indata – ett fält i [] (en kolumn spill)","Stockholm","","","Extract [city] from {0}","=PROMPT(B9;E9)"
+"Tom indata – enkel utdata","","","","Say hello to {0} (might be empty).","=PROMPT(B10;E10)"
+"Förväntat: Minst ett indata – endast prompt (1 arg)","","","","Only prompt no input","=PROMPT(E11)"
+"Saknad API-nyckel – radera nyckel via menyn och ladda om","Test","","","Echo {0}","=PROMPT(B12;E12)"
+"Multi-output – om modellen svarar med text istället för JSON blir det fel","Bad input","","","Extract [firstname,lastname] from {0}","=PROMPT(B13;E13)"
