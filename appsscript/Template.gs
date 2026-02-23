@@ -1,14 +1,14 @@
 /**
- * API-agnostisk mall-ersättning för Mass Prompt.
- * Ersätter placeholders {0}, {1}, {2}, … med värden från inputs-arrayen.
- * Ingen referens till SpreadsheetApp, UrlFetchApp eller OpenAI.
+ * API-agnostic template substitution for Mass Prompt.
+ * Replaces placeholders {0}, {1}, {2}, … with values from the inputs array.
+ * No reference to SpreadsheetApp, UrlFetchApp, or OpenAI.
  */
 
 /**
- * Fyller en prompt-mall med indatavärden.
- * @param {string} template - Mall med placeholders {0}, {1}, {2}, …
- * @param {Array} inputs - Array av värden (sträng eller tal); index i motsvarar {i}.
- * @returns {string} Den fyllda prompten. Saknas värde för {i} ersätts med tom sträng.
+ * Fills a prompt template with input values.
+ * @param {string} template - Template with placeholders {0}, {1}, {2}, …
+ * @param {Array} inputs - Array of values (string or number); index i corresponds to {i}.
+ * @returns {string} The filled prompt. Missing value for {i} is replaced with empty string.
  */
 function fillTemplate(template, inputs) {
   if (template == null || typeof template !== 'string') {
@@ -27,9 +27,9 @@ function fillTemplate(template, inputs) {
 }
 
 /**
- * Parsar utdata-schema från prompt-mall: första [field1,field2,...] tolkas som lista med fältnamn.
- * @param {string} template - Prompt-mall (kan innehålla [firstname,lastname] etc.).
- * @returns {Array.<string>|null} Array med fältnamn (trimmat), eller null om inget schema hittas.
+ * Parses the output schema from the prompt template: the first [field1,field2,...] is treated as the list of field names.
+ * @param {string} template - Prompt template (may contain [firstname,lastname] etc.).
+ * @returns {Array.<string>|null} Array of field names (trimmed), or null if no schema found.
  */
 function parseOutputSchema(template) {
   if (template == null || typeof template !== 'string') {

@@ -1,20 +1,20 @@
 /**
  * @OnlyCurrentDoc
  * Mass Prompt – Google Apps Script (container-bound).
- * Custom function PROMPT(indata_1; …; prompt_cell) anropar OpenAI Chat Completions och returnerar modellens svar.
- * API-nyckel sätts via menyn Mass Prompt → Sätt API-nyckel.
+ * Custom function PROMPT(input_1; …; prompt_cell) calls OpenAI Chat Completions and returns the model response.
+ * API key is set via menu Mass Prompt → Set API key.
  */
 
 var SCRIPT_PROP_API_KEY = 'API_KEY';
 var SCRIPT_PROP_OPENAI_ORG = 'OPENAI_ORG';
-var ERROR_MIN_ARGS = 'ERROR: Minst ett indata och en prompt krävs';
-var ERROR_NO_API_KEY = 'ERROR: Sätt API-nyckel via menyn Mass Prompt → Sätt API-nyckel';
-var ERROR_STRUCTURED_RESPONSE = 'ERROR: Ogiltigt strukturerat svar';
+var ERROR_MIN_ARGS = 'ERROR: At least one input and one prompt required';
+var ERROR_NO_API_KEY = 'ERROR: Set API key via menu Mass Prompt → Set API key';
+var ERROR_STRUCTURED_RESPONSE = 'ERROR: Invalid structured response';
 
 /**
- * Anpassad funktion för kalkylarket: =PROMPT(indata_1; indata_2; …; prompt_cell)
- * Sista argumentet = prompt-mall (med {0}, {1}, …), övriga = indata. Anropar OpenAI och returnerar svaret.
- * Om prompten innehåller [field1,field2,…] returneras resultatet som flera celler (spill till höger).
+ * Custom spreadsheet function: =PROMPT(input_1; input_2; …; prompt_cell)
+ * Last argument = prompt template (with {0}, {1}, …), others = inputs. Calls OpenAI and returns the response.
+ * If the prompt contains [field1,field2,…] the result is returned as multiple cells (spill to the right).
  */
 function PROMPT() {
   var args = Array.prototype.slice.call(arguments);
@@ -68,7 +68,7 @@ function PROMPT() {
 }
 
 /**
- * Returnerar ett cellvänligt värde när val är enkel värde eller 2D/1D-array från område.
+ * Returns a cell-friendly value when val is a single value or 2D/1D array from a range.
  */
 function normalizeCellValue(val) {
   if (val === null || val === undefined) {
@@ -85,37 +85,37 @@ function normalizeCellValue(val) {
 }
 
 /**
- * Skapar menyn Mass Prompt vid öppning av kalkylarket.
- * Sätt en utlösare "Vid öppning av dokument" för onOpen om menyn inte dyker upp automatiskt.
+ * Creates the Mass Prompt menu when the spreadsheet is opened.
+ * Set an "On open" trigger for onOpen if the menu does not appear automatically.
  */
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Mass Prompt')
-    .addItem('Sätt API-nyckel', 'showApiKeySidebar')
-    .addItem('Radera API-nyckel', 'clearApiKey')
+    .addItem('Set API key', 'showApiKeySidebar')
+    .addItem('Clear API key', 'clearApiKey')
     .addToUi();
 }
 
 /**
- * Returnerar sparad organisation (endast för att fylla i sidebar). Exponerar inte API-nyckel.
+ * Returns the saved organization (only for populating the sidebar). Does not expose the API key.
  */
 function getOrgForSidebar() {
   return PropertiesService.getScriptProperties().getProperty(SCRIPT_PROP_OPENAI_ORG) || '';
 }
 
 /**
- * Öppnar sidopanelen för inmatning av API-nyckel och organisation.
+ * Opens the sidebar for entering the API key and organization.
  */
 function showApiKeySidebar() {
   var html = HtmlService.createHtmlOutputFromFile('Sidebar')
-    .setTitle('API-nyckel')
+    .setTitle('API key')
     .setWidth(320);
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
 /**
- * Tvingar omräkning av alla celler som innehåller PROMPT i formeln,
- * så att de får uppdaterat resultat efter att API-nyckel sparats eller raderats.
+ * Forces recalculation of all cells that contain PROMPT in their formula,
+ * so they show updated results after the API key is saved or cleared.
  */
 function refreshPromptCells() {
   try {
@@ -141,12 +141,12 @@ function refreshPromptCells() {
 }
 
 /**
- * Sparar API-nyckel och valfritt OpenAI-organisations-id i Script Properties. Anropas från sidebar.
- * Uppdaterar därefter alla celler med =PROMPT(...) så att de räknas om.
+ * Saves the API key and optional OpenAI organization id in Script Properties. Called from the sidebar.
+ * Then refreshes all cells with =PROMPT(...) so they recalculate.
  */
 function saveApiKey(apiKey, orgId) {
   if (!apiKey || (typeof apiKey === 'string' && apiKey.trim() === '')) {
-    throw new Error('Ange en API-nyckel.');
+    throw new Error('Enter an API key.');
   }
   PropertiesService.getScriptProperties().setProperty(SCRIPT_PROP_API_KEY, apiKey.trim());
   if (orgId != null && typeof orgId === 'string' && orgId.trim() !== '') {
@@ -158,12 +158,12 @@ function saveApiKey(apiKey, orgId) {
 }
 
 /**
- * Tar bort API-nyckel och organisations-id från Script Properties och visar bekräftelse.
- * Uppdaterar därefter alla celler med =PROMPT(...) så att de visar felmeddelande.
+ * Removes the API key and organization id from Script Properties and shows confirmation.
+ * Then refreshes all cells with =PROMPT(...) so they show the error message.
  */
 function clearApiKey() {
   PropertiesService.getScriptProperties().deleteProperty(SCRIPT_PROP_API_KEY);
   PropertiesService.getScriptProperties().deleteProperty(SCRIPT_PROP_OPENAI_ORG);
   refreshPromptCells();
-  SpreadsheetApp.getUi().alert('API-nyckeln och organisationen har tagits bort.');
+  SpreadsheetApp.getUi().alert('API key and organization have been removed.');
 }

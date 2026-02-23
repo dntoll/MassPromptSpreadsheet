@@ -1,100 +1,102 @@
 # Google Spreadsheet Mass Prompt
 
-Plugin/funktion för Google Spreadsheet som kör AI-prompts mot cellvärden och skriver tillbaka resultatet i cellen.
+Plugin/function for Google Spreadsheet that runs AI prompts against cell values and writes the result back into the cell.
 
-## Teknisk grund
+**Example:** Cell A1 contains `Hello my name is Henrik`. In B1: `=PROMPT(A1; "Extract only the name from: {0}")` → result is **Henrik**. With the `[firstname,lastname]` syntax in the prompt you get multiple outputs in separate cells, e.g. `=PROMPT(A1; "Extract [firstname,lastname] from {0}")` → **John** and **Doe** in two cells.
 
-- **Plattform**: Google Apps Script (container-bound script eller add-on).
-- **AI**: Anropar **OpenAI** (Chat Completions). Standardmodell är **gpt-4o-mini**. Du använder din egen API-nyckel från OpenAI.
-- **Konfiguration**: API-nyckel sätts via menyn (se **Inmatning av API-nyckel**); lagras i Script Properties.
+## Technical overview
 
-## Installation av skriptet
+- **Platform**: Google Apps Script (container-bound script or add-on).
+- **AI**: Calls **OpenAI** (Chat Completions). Default model is **gpt-4o-mini**. You use your own OpenAI API key.
+- **Configuration**: API key is set via the menu (see **API key setup**); stored in Script Properties.
 
-1. Öppna det Google Spreadsheet där du vill använda Mass Prompt.
-2. Gå till **Tillägg → Apps Script** (svenska) eller **Extensions → Apps Script** (engelska). Det öppnar scriptredigeraren kopplad till just detta kalkylark.
-3. Ta bort eventuell tom `function myFunction() {}` i standardfilen (**Kod.gs** eller **Kod.js** på svenska, **Code.gs** på engelska).
-4. Kopiera in koden från detta projekt: lägg till eller ersätt **tre skriptfiler** – **Code.gs**, **Template.gs** och **ApiOpenAI.gs** – med innehållet från motsvarande filer i mappen `appsscript/`. Skapa en HTML-fil med namnet **Sidebar** (Plus → HTML-fil) och klistra in innehållet från `appsscript/Sidebar.html`. Alla fyra filerna behövs (Code.gs, Template.gs, ApiOpenAI.gs, Sidebar.html).
-5. **(Valfritt, för minimala behörigheter – krävs för att sidebar ska fungera)** Lägg till manifestfilen: i Apps Script, öppna **Projektinställningar** (kugghjulet) och kryssa i **Visa "appsscript.json"-manifestfil i redigeraren**. Skapa eller ersätt filen **appsscript.json** med innehållet från `appsscript/appsscript.json` i detta projekt. Kontrollera att `oauthScopes` innehåller både `spreadsheets.currentonly` och `script.container.ui` (den andra behövs för menyn och sidopanelen). Spara. Om du fortfarande får fel om "permissions not sufficient to call Ui.showSidebar": återkalla godkännandet (se nedan) och godkänn igen.
-6. Spara (Ctrl+S). Namnge projektet om du vill (t.ex. "Mass Prompt").
-7. Första gången: **Kör en funktion** eller öppna kalkylarket på nytt och godkänn behörigheter om Google visar en säkerhetsdialog (åtkomst till att köra som dig, lagra Script Properties). Om Google visar **"Google har inte verifierat den här appen"**: klicka på **Avancerat** och välj **Fortsätt till [projektnamn] (osäker)**. Scriptet är ditt eget och körs bara i det här kalkylarket; det är normalt att gå vidare vid egen utveckling.
-8. Efter installation: i kalkylarket ska menyn **Mass Prompt** (eller motsvarande) finnas i menyraden.
+## Installation
 
-**Om du får "Specified permissions are not sufficient to call Ui.showSidebar":** Kontrollera att `appsscript.json` innehåller båda scope (steg 5). Spara manifestet. Återkalla sedan det gamla godkännandet så att Google frågar igen: gå till [Google-kontots säkerhet](https://myaccount.google.com/permissions), hitta "Kalkylark" eller ditt projekt under "Åtkomst till tredje part" och ta bort åtkomsten. Öppna kalkylarket igen och klicka på **Mass Prompt → Sätt API-nyckel** – då ska en ny behörighetsruta visas; godkänn så inkluderas `script.container.ui` och sidebar fungerar.
+1. Open the Google Spreadsheet where you want to use Mass Prompt.
+2. Go to **Extensions → Apps Script**. This opens the script editor bound to that spreadsheet.
+3. Remove any empty `function myFunction() {}` in the default file (**Code.gs**).
+4. Copy in the code from this project: add or replace **three script files** – **Code.gs**, **Template.gs**, and **ApiOpenAI.gs** – with the contents of the corresponding files in the `appsscript/` folder. Create an HTML file named **Sidebar** (Plus → HTML file) and paste the contents of `appsscript/Sidebar.html`. All four files are required (Code.gs, Template.gs, ApiOpenAI.gs, Sidebar.html).
+5. **(Optional, for minimal permissions – required for sidebar)** Add the manifest: in Apps Script, open **Project settings** (gear icon) and check **Show "appsscript.json" manifest file in editor**. Create or replace the file **appsscript.json** with the contents of `appsscript/appsscript.json` in this project. Ensure `oauthScopes` includes both `spreadsheets.currentonly` and `script.container.ui` (the latter is needed for the menu and sidebar). Save. If you still get "permissions not sufficient to call Ui.showSidebar": revoke the approval (see below) and approve again.
+6. Save (Ctrl+S). Name the project if you like (e.g. "Mass Prompt").
+7. First time: **Run a function** or reopen the spreadsheet and approve permissions when Google shows a security dialog (run as you, store Script Properties). If Google shows **"Google hasn't verified this app"**: click **Advanced** and choose **Go to [project name] (unsafe)**. The script is your own and runs only in this spreadsheet; it's normal to proceed for personal use.
+8. After installation, the **Mass Prompt** menu (or equivalent) should appear in the spreadsheet menu bar.
 
-Detta är ett **container-bound script** (kopplat till ett specifikt kalkylark). Vill du använda Mass Prompt i ett annat blad måste scriptet kopieras till det bladets Apps Script-projekt.
+**If you get "Specified permissions are not sufficient to call Ui.showSidebar":** Check that `appsscript.json` contains both scopes (step 5). Save the manifest. Then revoke the previous approval so Google asks again: go to [Google account security](https://myaccount.google.com/permissions), find "Spreadsheet" or your project under "Third-party access" and remove access. Reopen the spreadsheet and click **Mass Prompt → Set API key** – a new permission prompt should appear; approve so `script.container.ui` is included and the sidebar works.
 
-## Behörigheter
+This is a **container-bound script** (tied to one spreadsheet). To use Mass Prompt in another sheet, copy the script into that sheet’s Apps Script project.
 
-Scriptet är utformat för **minimala behörigheter**. Det begär endast: (1) åtkomst till **det kalkylark du har öppnat** (inte alla dina kalkylark), (2) behörighet att visa **meny och sidopanel** (sidebar) i kalkylarket, och (3) möjlighet att skicka **externa anrop** till OpenAI API (för att köra =PROMPT). Det begär inte åtkomst till Gmail, Drive-filer eller andra Google-tjänster. Om du använder medföljande **appsscript.json** (manifest) begränsas behörigheterna uttryckligen till detta. Om du inte lägger in manifest kan Google visa bredare behörigheter baserat på automatisk detektering.
+## Permissions
 
-## Inmatning av API-nyckel
+The script is designed for **minimal permissions**. It requests only: (1) access to **the spreadsheet you have open** (not all your spreadsheets), (2) permission to show the **menu and sidebar** in that spreadsheet, and (3) the ability to make **external requests** to the OpenAI API (to run =PROMPT). It does not request access to Gmail, Drive files, or other Google services. With the provided **appsscript.json** (manifest), permissions are explicitly limited to this. Without the manifest, Google may show broader permissions based on auto-detection.
 
-- **Vem delar nyckeln:** API-nyckeln lagras i **Script Properties** (projektnivå) och används av alla som kan redigera dokumentet. Endast scriptet kan läsa eller skriva nyckeln; den är inte tillgänglig för andra tjänster.
-- **Var nyckeln aldrig ska vara:** Inte i en cell, inte i scriptkoden. Endast i Script Properties, satt via menyn.
+## API key setup
 
-**Så sätter du nyckeln:**
+- **Who shares the key:** The API key is stored in **Script Properties** (project level) and used by everyone who can edit the document. Only the script can read or write the key; it is not available to other services.
+- **Where the key must never be:** Not in a cell, not in the script code. Only in Script Properties, set via the menu.
 
-1. I kalkylarket: klicka på menyn **Mass Prompt** (eller det namn implementationen använder).
-2. Välj **Sätt API-nyckel** (eller liknande).
-3. En sidopanel (sidebar) öppnas med ett dolt fält för API-nyckel.
-4. Klistra in din API-nyckel och klicka **Spara**. Nyckeln sparas i Script Properties och används vid anrop till `=PROMPT(...)`. När du sparar (eller raderar) API-nyckel uppdateras alla celler som innehåller `=PROMPT(...)` automatiskt, så du behöver inte redigera formler eller indata för att se det nya resultatet.
+**How to set the key:**
 
-Om implementationen har det: använd **Radera API-nyckel** i menyn för att ta bort nyckeln från Script Properties.
+1. In the spreadsheet: click the **Mass Prompt** menu (or whatever name the implementation uses).
+2. Choose **Set API key** (or similar).
+3. A sidebar opens with a hidden field for the API key.
+4. Paste your API key and click **Save**. The key is stored in Script Properties and used for `=PROMPT(...)` calls. When you save (or clear) the API key, all cells containing `=PROMPT(...)` are refreshed automatically, so you don’t need to edit formulas or inputs to see the new result.
 
-**Säkerhet:** Nyckeln lagras på Googles servrar (Script Properties) och används endast av scriptet för validering och API-anrop; scriptet begär inte fler rättigheter än de som beskrivs under **Behörigheter**. Begränsa vilka som har redigeringsrätt till **scriptet** (Tillägg → Apps Script / Extensions → Apps Script) om du vill att färre ska kunna se eller ändra nyckeln. Indata från celler skickas till OpenAI som separat struktur (uppgift + data), och modellen instrueras att behandla data endast som substitutionsvärden – det minskar risken för prompt injection, men ger ingen full garanti.
+If the implementation provides it: use **Clear API key** in the menu to remove the key from Script Properties.
 
-## Signatur
+**Security:** The key is stored on Google’s servers (Script Properties) and used only by the script for validation and API calls; the script does not request more rights than described under **Permissions**. Restrict who can edit the **script** (Extensions → Apps Script) if you want fewer people to see or change the key. Input from cells is sent to OpenAI as a separate structure (task + data), and the model is instructed to treat data only as substitution values – that reduces prompt injection risk but does not guarantee it.
+
+## Signature
 
 ```
-=PROMPT(indata_1; [indata_2; …]; prompt_cell)
+=PROMPT(input_1; [input_2; …]; prompt_cell)
 ```
 
-- **indata_1, indata_2, …**: Celler eller värden som ska användas i prompten. Minst ett indata krävs. Flera indata mappas till placeholders `{0}`, `{1}`, `{2}` osv. i ordning.
-- **prompt_cell**: Cell som innehåller prompt-mallen. Sista argumentet är alltid prompt-mallen.
+- **input_1, input_2, …**: Cells or values to use in the prompt. At least one input is required. Multiple inputs map to placeholders `{0}`, `{1}`, `{2}`, etc. in order.
+- **prompt_cell**: Cell containing the prompt template. The last argument is always the prompt template.
 
-Argument avgränsas med semikolon (;) i svensk och många europeiska locale, med komma (,) i t.ex. engelska (US). Funktionen returnerar antingen ett enda textvärde (en cell) eller flera värden som sprids horisontellt (se **Flera utdata**).
+Arguments are separated by semicolon (;) in many European locales, and by comma (,) in e.g. English (US). The function returns either a single text value (one cell) or multiple values that spill horizontally (see **Multiple outputs**).
 
 ## Placeholders
 
-Placeholders använder **curly brackets** `{}` (vanlig standard i prompt-mallar). Index motsvarar ordningen på indata-argumenten.
+Placeholders use **curly brackets** `{}`. The index matches the order of the input arguments.
 
-- **`{0}`** — ersätts med första indata-argumentet.
-- **`{1}`** — ersätts med andra indata-argumentet (om det finns).
-- **`{2}`** — tredje, osv.
+- **`{0}`** — replaced with the first input.
+- **`{1}`** — replaced with the second input (if present).
+- **`{2}`** — third, etc.
 
-## Flera utdata (utdata-schema)
+## Multiple outputs (output schema)
 
-Om prompt-mallen innehåller **hakparenteser med kommaseparerade fältnamn**, t.ex. `[firstname,lastname]`, tolkas det som att modellen ska svara med ett strukturerat svar (ett JSON-objekt med dessa nycklar). Resultatet sprids då över flera celler (en rad horisontellt), en cell per fält.
+If the prompt template contains **square brackets with comma-separated field names**, e.g. `[firstname,lastname]`, it is treated as a request for a structured response (a JSON object with those keys). The result then spills across multiple cells (one row horizontally), one cell per field.
 
-- **Syntax:** `[fält1,fält2,...]` – första förekomsten av `[ ... ]` i prompten parsas; fältnamnen trimmas.
-- **Exempel:** `Extract [firstname,lastname] from {0}` → modellen ombes att returnera JSON med nycklarna `firstname` och `lastname`; första cellen får förnamn, nästa cell efternamn.
-- Utan utdata-schema i prompten gäller som tidigare ett enda textvärde per anrop.
-- Vid ogiltigt eller icke-JSON-svar från modellen visas `ERROR: Ogiltigt strukturerat svar` i formelcellen.
+- **Syntax:** `[field1,field2,...]` – the first occurrence of `[ ... ]` in the prompt is parsed; field names are trimmed.
+- **Example:** `Extract [firstname,lastname] from {0}` → the model is asked to return JSON with keys `firstname` and `lastname`; the first cell gets the first name, the next cell the last name.
+- Without an output schema in the prompt, behaviour is unchanged: one text value per call.
+- If the model returns invalid or non-JSON text, `ERROR: Invalid structured response` is shown in the formula cell.
 
-## Användning
+## Usage examples
 
-**Exempel med ett indata:**
+**One input:**
 
-- **A3** innehåller: `Hello my name is Henrik`
-- **B1** innehåller: `If the {0} contains a name then output only the name as output`
-- **B3** innehåller: `=PROMPT(A3;B1)` → resultat: `Henrik`
+- **A3** contains: `Hello my name is Henrik`
+- **B1** contains: `If the {0} contains a name then output only the name as output`
+- **B3** contains: `=PROMPT(A3;B1)` → result: `Henrik`
 
-**Exempel med flera indata:**
+**Multiple inputs:**
 
-- **A3** innehåller: `Henrik`
-- **B3** innehåller: `Stockholm`
-- **C1** innehåller: `The person {0} lives in {1}.`
-- **C3** innehåller: `=PROMPT(A3;B3;C1)` → resultat: `The person Henrik lives in Stockholm.`
+- **A3** contains: `Henrik`
+- **B3** contains: `Stockholm`
+- **C1** contains: `The person {0} lives in {1}.`
+- **C3** contains: `=PROMPT(A3;B3;C1)` → result: `The person Henrik lives in Stockholm.`
 
-**Exempel med flera utdata (spill till höger):**
+**Multiple outputs (spill to the right):**
 
-- **A3** innehåller: `John Doe`
-- **B1** innehåller: `Extract [firstname,lastname] from {0}`
-- **B3** innehåller: `=PROMPT(A3;B1)` → första cellen (B3) får t.ex. `John`, nästa cell (C3) får t.ex. `Doe`. Resultatet sprids horisontellt.
+- **A3** contains: `John Doe`
+- **B1** contains: `Extract [firstname,lastname] from {0}`
+- **B3** contains: `=PROMPT(A3;B1)` → first cell (B3) gets e.g. `John`, next cell (C3) gets e.g. `Doe`. The result spills horizontally.
 
-Se **Inmatning av API-nyckel** om du ännu inte satt nyckel.
+See **API key setup** if you haven’t set the key yet.
 
-## Fel och begränsningar
+## Errors and limitations
 
-- Vid fel (nätverksfel, ogiltig API-nyckel, rate limit m.m.) returnerar funktionen ett felmeddelande i cellen, t.ex. `ERROR: <kort beskrivning>`. Implementeringen kan komplettera med loggning.
-- Google Apps Script har begränsningar för anpassade funktioner (t.ex. max körtid ~30 s). Vid många rader rekommenderas att inte köra hundratals `=PROMPT`-anrop samtidigt; batch eller meny/trigger kan användas i en framtida version.
+- On failure (network error, invalid API key, rate limit, etc.) the function returns an error message in the cell, e.g. `ERROR: <short description>`. The implementation may add logging.
+- Google Apps Script limits custom functions (e.g. ~30 s max runtime). With many rows, avoid running hundreds of `=PROMPT` calls at once; a batch or menu/trigger can be used in a future version.

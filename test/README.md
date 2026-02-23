@@ -1,31 +1,31 @@
-# Test-CSV för PROMPT
+# Test CSV for PROMPT
 
-Filen `spreadsheet-prompt.csv` i denna katalog innehåller rader som testar `=PROMPT(...)` på olika sätt.
+The file `spreadsheet-prompt.csv` in this folder contains rows that test `=PROMPT(...)` in various ways.
 
-## Importera i Google Sheets
+## Import into Google Sheets
 
-1. Skapa ett nytt kalkylark eller öppna det där Mass Prompt är installerat.
-2. **Fil → Importera → Ladda upp** (eller klistra in): välj `spreadsheet-prompt.csv` från mappen `test/`.
-3. Vid import: välj att ersätta eller infoga på aktuell sida; avgränsare **komma**.
-4. Sätt API-nyckel via **Mass Prompt → Sätt API-nyckel** om du inte redan gjort det.
+1. Create a new spreadsheet or open one where Mass Prompt is installed.
+2. **File → Import → Upload** (or paste): select `spreadsheet-prompt.csv` from the `test/` folder.
+3. On import: choose to replace or insert at current sheet; delimiter **comma**.
+4. Set the API key via **Mass Prompt → Set API key** if you haven’t already.
 
-## Innehåll
+## Contents
 
-- **Kolumn A:** Beskrivning av testfallet.
-- **B–D:** Indata 1–3 (värden som används i prompten).
-- **E:** Prompt-mall (med `{0}`, `{1}` osv., eventuellt `[fält1,fält2]` för flera utdata).
-- **F:** Formel som anropar PROMPT med cellerna på samma rad.
+- **Column A:** Description of the test case.
+- **B–D:** Inputs 1–3 (values used in the prompt).
+- **E:** Prompt template (with `{0}`, `{1}`, etc., and optionally `[field1,field2]` for multiple outputs).
+- **F:** Formula that calls PROMPT with the cells on the same row.
 
-Rader som testar fel kräver att du själv triggar dem (t.ex. radera API-nyckeln för raden "Saknad API-nyckel").
+Rows that test errors require you to trigger them (e.g. clear the API key for the "Missing API key" row).
 
-## Testade fall
+## Test cases
 
-| Typ | Beskrivning |
-|-----|-------------|
-| Fel | För få argument (endast prompt) → `ERROR: Minst ett indata och en prompt krävs` |
-| Enkel utdata | 1, 2 respektive 3 indata med enkel prompt |
-| Flera utdata | Prompt med `[firstname,lastname]` eller `[country,city]` → spill till höger |
-| Ett fält i [] | `[city]` → en extra kolumn (spill) |
-| Tom indata | Prompt med tomt `{0}` |
-| Fel | Saknad API-nyckel → `ERROR: Sätt API-nyckel via menyn...` (radera nyckel och ladda om) |
-| Fel | Multi-output med icke-JSON-svar → `ERROR: Ogiltigt strukturerat svar` (beror på modellens svar) |
+| Type | Description |
+|------|-------------|
+| Error | Too few arguments (prompt only) → `ERROR: At least one input and one prompt required` |
+| Single output | 1, 2, or 3 inputs with a simple prompt |
+| Multiple outputs | Prompt with `[firstname,lastname]` or `[country,city]` → spill to the right |
+| Single field in [] | `[city]` → one extra column (spill) |
+| Empty input | Prompt with empty `{0}` |
+| Error | Missing API key → `ERROR: Set API key via menu...` (clear key and reload) |
+| Error | Multi-output with non-JSON response → `ERROR: Invalid structured response` (depends on model output) |
