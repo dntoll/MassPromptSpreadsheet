@@ -10,6 +10,8 @@ var SCRIPT_PROP_OPENAI_ORG = 'OPENAI_ORG';
 var ERROR_MIN_ARGS = 'ERROR: At least one input and one prompt required';
 var ERROR_NO_API_KEY = 'ERROR: Set API key via menu Mass Prompt → Set API key';
 var ERROR_STRUCTURED_RESPONSE = 'ERROR: Invalid structured response';
+var URL_READER_PREFIX = 'https://r.jina.ai/';
+var MAX_EXTERNAL_TEXT_CHARS = 12000;
 
 /**
  * Custom spreadsheet function: =PROMPT(input_1; input_2; …; prompt_cell)
@@ -30,7 +32,7 @@ function PROMPT() {
   var template = templateRaw != null ? String(normalizeCellValue(templateRaw)) : '';
   var normalizedInputs = [];
   for (var i = 0; i < rawInputs.length; i++) {
-    normalizedInputs.push(normalizeCellValue(rawInputs[i]));
+    normalizedInputs.push(resolveInputValue(rawInputs[i]));
   }
 
   var outputKeys = parseOutputSchema(template);
@@ -65,6 +67,94 @@ function PROMPT() {
     return result;
   }
   return result;
+}
+
+/**
+ * Normalizes an input and expands URL cells into fetched text content.
+ * Public web pages are fetched directly; PDFs/web pages are also attempted via r.jina.ai reader.
+ */
+function resolveInputValue(val) {
+  var normalized = normalizeCellValue(val);
+  if (normalized == null) {
+    return '';
+  }
+  var asString = String(normalized).trim();
+  if (!/^https?:\/\//i.test(asString)) {
+    return normalized;
+  }
+  return fetchExternalText(asString);
+}
+
+/**
+ * Fetches text for a URL. First tries r.jina.ai reader for broad webpage/PDF support,
+ * then falls back to direct HTML/text extraction from the source URL.
+ */
+function fetchExternalText(url) {
+  var viaReader = fetchViaJinaReader(url);
+  if (viaReader) {
+    return trimExternalContent(viaReader);
+  }
+  var direct = fetchDirectUrlText(url);
+  if (direct) {
+    return trimExternalContent(direct);
+  }
+  return 'ERROR: Could not fetch URL content: ' + url;
+}
+
+function fetchViaJinaReader(url) {
+  try {
+    var response = UrlFetchApp.fetch(URL_READER_PREFIX + url, {
+      method: 'get',
+      followRedirects: true,
+      muteHttpExceptions: true
+    });
+    if (response.getResponseCode() !== 200) {
+      return '';
+    }
+    return response.getContentText();
+  } catch (e) {
+    return '';
+  }
+}
+
+function fetchDirectUrlText(url) {
+  try {
+    var response = UrlFetchApp.fetch(url, {
+      method: 'get',
+      followRedirects: true,
+      muteHttpExceptions: true,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MassPromptSpreadsheet/1.0)' }
+    });
+    if (response.getResponseCode() !== 200) {
+      return '';
+    }
+    var contentType = (response.getHeaders()['Content-Type'] || '').toLowerCase();
+    var text = response.getContentText();
+    if (contentType.indexOf('text/html') !== -1) {
+      text = stripHtml(text);
+    }
+    return text;
+  } catch (e) {
+    return '';
+  }
+}
+
+function stripHtml(html) {
+  if (!html) return '';
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function trimExternalContent(text) {
+  var asString = String(text || '').trim();
+  if (asString.length <= MAX_EXTERNAL_TEXT_CHARS) {
+    return asString;
+  }
+  return asString.substring(0, MAX_EXTERNAL_TEXT_CHARS) + '\n\n[Truncated to ' + MAX_EXTERNAL_TEXT_CHARS + ' chars]';
 }
 
 /**
