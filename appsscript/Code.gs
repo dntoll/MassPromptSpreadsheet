@@ -10,6 +10,10 @@ var SCRIPT_PROP_OPENAI_ORG = 'OPENAI_ORG';
 var ERROR_MIN_ARGS = 'ERROR: At least one input and one prompt required';
 var ERROR_NO_API_KEY = 'ERROR: Set API key via menu Mass Prompt → Set API key';
 var ERROR_STRUCTURED_RESPONSE = 'ERROR: Invalid structured response';
+var URL_READER_PREFIX = 'https://r.jina.ai/';
+var MAX_EXTERNAL_TEXT_CHARS = 12000;
+var PROMPT_CACHE_TTL_SECONDS = 21600;
+var WAITING_FOR_DEPENDENCY_RESULT = '';
 
 /**
  * Custom spreadsheet function: =PROMPT(input_1; input_2; …; prompt_cell)
@@ -30,10 +34,20 @@ function PROMPT() {
   var template = templateRaw != null ? String(normalizeCellValue(templateRaw)) : '';
   var normalizedInputs = [];
   for (var i = 0; i < rawInputs.length; i++) {
-    normalizedInputs.push(normalizeCellValue(rawInputs[i]));
+    normalizedInputs.push(resolveInputValue(rawInputs[i]));
+  }
+
+  if (hasUnstableDependencyInput(normalizedInputs)) {
+    return WAITING_FOR_DEPENDENCY_RESULT;
   }
 
   var outputKeys = parseOutputSchema(template);
+  var cacheKey = buildPromptCacheKey(template, normalizedInputs, outputKeys, apiKey);
+  var cached = getPromptResultFromCache(cacheKey, outputKeys);
+  if (cached !== null) {
+    return cached;
+  }
+
   if (outputKeys && outputKeys.length > 0) {
     var result = sendPromptStructuredMulti(template, normalizedInputs, outputKeys, apiKey);
     if (result.indexOf('ERROR: ') === 0) {
@@ -54,7 +68,9 @@ function PROMPT() {
         var val = obj[key];
         row.push(val !== undefined && val !== null ? String(val) : '');
       }
-      return [row];
+      var structuredResult = [row];
+      putPromptResultInCache(cacheKey, structuredResult);
+      return structuredResult;
     } catch (e) {
       return ERROR_STRUCTURED_RESPONSE;
     }
@@ -64,7 +80,159 @@ function PROMPT() {
   if (result.indexOf('ERROR: ') === 0) {
     return result;
   }
+  putPromptResultInCache(cacheKey, result);
   return result;
+}
+
+
+function hasUnstableDependencyInput(inputs) {
+  if (!inputs || !Array.isArray(inputs)) {
+    return false;
+  }
+  for (var i = 0; i < inputs.length; i++) {
+    var v = inputs[i];
+    if (v == null) continue;
+    var text = String(v).trim();
+    if (text === '') continue;
+    if (/^Loading\.\.\.$/i.test(text) || /^Loading$/i.test(text) || /^#N\/A/i.test(text) || /^#ERROR!/i.test(text)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function buildPromptCacheKey(template, inputs, outputKeys, apiKey) {
+  var apiKeyHash = '';
+  try {
+    if (apiKey) {
+      var keyDigest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(apiKey));
+      apiKeyHash = Utilities.base64EncodeWebSafe(keyDigest);
+    }
+  } catch (e) {}
+  var payload = JSON.stringify({
+    template: String(template || ''),
+    inputs: inputs || [],
+    outputKeys: outputKeys || [],
+    model: typeof OPENAI_MODEL !== 'undefined' ? OPENAI_MODEL : '',
+    apiKeyHash: apiKeyHash
+  });
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, payload);
+  return 'prompt:' + Utilities.base64EncodeWebSafe(digest);
+}
+
+function getPromptResultFromCache(cacheKey, outputKeys) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get(cacheKey);
+    if (!cached) {
+      return null;
+    }
+    var parsed = JSON.parse(cached);
+    if (outputKeys && outputKeys.length > 0) {
+      if (!Array.isArray(parsed)) return null;
+      return parsed;
+    }
+    return parsed != null ? String(parsed) : '';
+  } catch (e) {
+    return null;
+  }
+}
+
+function putPromptResultInCache(cacheKey, value) {
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.put(cacheKey, JSON.stringify(value), PROMPT_CACHE_TTL_SECONDS);
+  } catch (e) {
+    // Cache failure should not break formula results.
+  }
+}
+
+/**
+ * Normalizes an input and expands URL cells into fetched text content.
+ * Public web pages are fetched directly; PDFs/web pages are also attempted via r.jina.ai reader.
+ */
+function resolveInputValue(val) {
+  var normalized = normalizeCellValue(val);
+  if (normalized == null) {
+    return '';
+  }
+  var asString = String(normalized).trim();
+  if (!/^https?:\/\//i.test(asString)) {
+    return normalized;
+  }
+  return fetchExternalText(asString);
+}
+
+/**
+ * Fetches text for a URL. First tries r.jina.ai reader for broad webpage/PDF support,
+ * then falls back to direct HTML/text extraction from the source URL.
+ */
+function fetchExternalText(url) {
+  var viaReader = fetchViaJinaReader(url);
+  if (viaReader) {
+    return trimExternalContent(viaReader);
+  }
+  var direct = fetchDirectUrlText(url);
+  if (direct) {
+    return trimExternalContent(direct);
+  }
+  return 'ERROR: Could not fetch URL content: ' + url;
+}
+
+function fetchViaJinaReader(url) {
+  try {
+    var response = UrlFetchApp.fetch(URL_READER_PREFIX + url, {
+      method: 'get',
+      followRedirects: true,
+      muteHttpExceptions: true
+    });
+    if (response.getResponseCode() !== 200) {
+      return '';
+    }
+    return response.getContentText();
+  } catch (e) {
+    return '';
+  }
+}
+
+function fetchDirectUrlText(url) {
+  try {
+    var response = UrlFetchApp.fetch(url, {
+      method: 'get',
+      followRedirects: true,
+      muteHttpExceptions: true,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MassPromptSpreadsheet/1.0)' }
+    });
+    if (response.getResponseCode() !== 200) {
+      return '';
+    }
+    var contentType = (response.getHeaders()['Content-Type'] || '').toLowerCase();
+    var text = response.getContentText();
+    if (contentType.indexOf('text/html') !== -1) {
+      text = stripHtml(text);
+    }
+    return text;
+  } catch (e) {
+    return '';
+  }
+}
+
+function stripHtml(html) {
+  if (!html) return '';
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function trimExternalContent(text) {
+  var asString = String(text || '').trim();
+  if (asString.length <= MAX_EXTERNAL_TEXT_CHARS) {
+    return asString;
+  }
+  return asString.substring(0, MAX_EXTERNAL_TEXT_CHARS) + '\n\n[Truncated to ' + MAX_EXTERNAL_TEXT_CHARS + ' chars]';
 }
 
 /**

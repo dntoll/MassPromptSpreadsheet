@@ -27,5 +27,7 @@ Rows that test errors require you to trigger them (e.g. clear the API key for th
 | Multiple outputs | Prompt with `[firstname,lastname]` or `[country,city]` → spill to the right |
 | Single field in [] | `[city]` → one extra column (spill) |
 | Empty input | Prompt with empty `{0}` |
+| URL input | Public webpage/PDF URL in input cell is fetched and used as `{0}` context |
+| Chained dependency | Two-row chain where downstream input references upstream PROMPT output (e.g. `B16 = F15`) |
 | Error | Missing API key → `ERROR: Set API key via menu...` (clear key and reload) |
 | Error | Multi-output with non-JSON response → `ERROR: Invalid structured response` (depends on model output) |

@@ -56,6 +56,10 @@ If the implementation provides it: use **Clear API key** in the menu to remove t
 - **input_1, input_2, …**: Cells or values to use in the prompt. At least one input is required. Multiple inputs map to placeholders `{0}`, `{1}`, `{2}`, etc. in order.
 - **prompt_cell**: Cell containing the prompt template. The last argument is always the prompt template.
 
+- **URL inputs (web/PDF):** If an input cell contains `http://` or `https://`, Mass Prompt fetches readable text from that URL and uses that text as the input value. This lets prompts ask questions about a web page or public PDF directly from a URL cell. Retrieved text is truncated to keep function runtime and token usage manageable.
+
+- **Result cache:** PROMPT responses are cached (by prompt template + normalized inputs + output schema + model) for a limited time to reduce unnecessary re-fetch/recompute when Sheets recalculates without input changes (e.g. sorting/reordering).
+
 Arguments are separated by semicolon (;) in many European locales, and by comma (,) in e.g. English (US). The function returns either a single text value (one cell) or multiple values that spill horizontally (see **Multiple outputs**).
 
 ## Placeholders
@@ -90,6 +94,13 @@ If the prompt template contains **square brackets with comma-separated field nam
 - **C1** contains: `The person {0} lives in {1}.`
 - **C3** contains: `=PROMPT(A3;B3;C1)` → result: `The person Henrik lives in Stockholm.`
 
+
+**URL input (ask about webpage/PDF):**
+
+- **A3** contains: `https://example.com/some-page`
+- **B1** contains: `Summarize the key points from {0} in 5 bullets.`
+- **B3** contains: `=PROMPT(A3;B1)` → the URL content is fetched and summarized.
+
 **Multiple outputs (spill to the right):**
 
 - **A3** contains: `John Doe`
@@ -102,3 +113,7 @@ See **API key setup** if you haven’t set the key yet.
 
 - On failure (network error, invalid API key, rate limit, etc.) the function returns an error message in the cell, e.g. `ERROR: <short description>`. The implementation may add logging.
 - Google Apps Script limits custom functions (e.g. ~30 s max runtime). With many rows, avoid running hundreds of `=PROMPT` calls at once; a batch or menu/trigger can be used in a future version.
+
+- URL input works best for **publicly accessible** pages/PDFs. Sites requiring login, heavy anti-bot protection, or complex client-side rendering may fail and return an `ERROR:` text.
+
+- In chains like `A2 =PROMPT(A1; ...)` and `B2 =PROMPT(A2; ...)`, downstream cells avoid API calls while upstream input is still in an unstable loading state; they evaluate once the dependency becomes stable.
