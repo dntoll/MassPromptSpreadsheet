@@ -58,6 +58,8 @@ If the implementation provides it: use **Clear API key** in the menu to remove t
 
 - **URL inputs (web/PDF):** If an input cell contains `http://` or `https://`, Mass Prompt fetches readable text from that URL and uses that text as the input value. This lets prompts ask questions about a web page or public PDF directly from a URL cell. Retrieved text is truncated to keep function runtime and token usage manageable.
 
+- **Result cache:** PROMPT responses are cached (by prompt template + normalized inputs + output schema + model) for a limited time to reduce unnecessary re-fetch/recompute when Sheets recalculates without input changes (e.g. sorting/reordering).
+
 Arguments are separated by semicolon (;) in many European locales, and by comma (,) in e.g. English (US). The function returns either a single text value (one cell) or multiple values that spill horizontally (see **Multiple outputs**).
 
 ## Placeholders
@@ -113,3 +115,5 @@ See **API key setup** if you haven’t set the key yet.
 - Google Apps Script limits custom functions (e.g. ~30 s max runtime). With many rows, avoid running hundreds of `=PROMPT` calls at once; a batch or menu/trigger can be used in a future version.
 
 - URL input works best for **publicly accessible** pages/PDFs. Sites requiring login, heavy anti-bot protection, or complex client-side rendering may fail and return an `ERROR:` text.
+
+- In chains like `A2 =PROMPT(A1; ...)` and `B2 =PROMPT(A2; ...)`, downstream cells avoid API calls while upstream input is still in an unstable loading state; they evaluate once the dependency becomes stable.

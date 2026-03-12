@@ -12,3 +12,5 @@ Description,Input1,Input2,Input3,Prompt,Formula
 "Expected: At least one input – prompt only (1 arg)","","","","Only prompt no input","=PROMPT(E12)"
 "Missing API key – clear key via menu and reload","Test","","","Echo {0}","=PROMPT(B13;E13)"
 "Multi-output – if model returns text instead of JSON an error is shown","Bad input","","","Extract [firstname,lastname] from {0}","=PROMPT(B14;E14)"
+"Chain test step 1 (upstream PROMPT)","This is source text for chaining","","","Rewrite this in one short sentence: {0}","=PROMPT(B15;E15)"
+"Chain test step 2 (downstream waits for upstream)","=F15","","","From this text, extract one keyword: {0}","=PROMPT(B16;E16)"
